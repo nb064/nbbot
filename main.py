@@ -23,7 +23,7 @@ async def help(ctx):
     embed=discord.Embed(title="NBBot Help", description="Here are all the commands for NBBot.", color=discord.Color.blue())
     embed.add_field(name="NBGames Content", value="game: Get information about a game by NBGames.", inline=False)
     embed.add_field(name="Administration", value="ban: Bans a member.\nkick: Kicks a member.\nmute: Mutes a member.\nunmute: Unmutes a member\npurge: Clears an amount of messages in the channel.", inline=False)
-    embed.add_field(name="Other", value="help: See all commands.\nmemberinfo: Gets info about a member.\nping: Get latency.\nrandom: Picks between 2 numbers.", inline=False)
+    embed.add_field(name="Other", value="help: See all commands.\nmemberinfo: Gets info about a member.\nping: Get latency.\nrandom: Picks between 2 numbers.\nrepeat: I will repeat something!", inline=False)
     await ctx.respond(embed=embed)
 
 #Ping Command
@@ -110,6 +110,11 @@ async def random(ctx, number1, number2):
     except ValueError:
         #Returns an error if one or both of the numbers are invalid.
         await ctx.respond(f'{ctx.author.mention}, please enter 2 valid numbers.', delete_after=3)
+    
+#Repeat command
+@client.slash_command(name="repeat", description = "I will repeat something!")
+async def repeat(ctx, message):
+    await ctx.respond(message)
 
 #Game Command
 @client.slash_command(name="game", description="Get info on a game made by NBGames.")
