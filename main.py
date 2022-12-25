@@ -4,6 +4,7 @@ import random as rand
 from os import environ
 from dotenv import load_dotenv
 
+
 intents = discord.Intents.default()
 intents.members = True
 
@@ -120,26 +121,39 @@ async def repeat(ctx, message):
 @client.slash_command(name="game", description="Get info on a game made by NBGames.")
 async def game(ctx, gamename):
     #Create embed
-    embed=discord.Embed(title="", color=discord.Color.blue())
-    if gamename == "JumpHouse: Moving Again" or gamename == "JumpHouse Moving Again" or gamename == "JumpHouse 2" or gamename == "jumphouse moving again" or gamename == "jumphouse 2":
+    embed=discord.Embed(title=None, color=discord.Color.blue())
+    #Convert the gamename string to be entirely lowercase. Best to do this so it's easier to use in an if statement.
+    gamename = gamename.lower()
+    #Get game info based on gamename string
+    if gamename == "jumphouse: moving again" or gamename == "jumphouse moving again" or gamename == "jumphouse 2" or gamename == "jumphouse moving again":
         embed.title = "*JumpHouse: Moving Again*"
         embed.add_field(name="About", value="Collect boxes and move to houses!", inline=False)
         embed.add_field(name="Release Date", value="2023", inline=False)
         embed.add_field(name="More Info", value="Check out more [here](https://nb-dev.wixsite.com/nbgames/jumphouse-moving-again)", inline=False)
         embed.set_thumbnail(url="https://static.wixstatic.com/media/0b14ca_1d259fc34e7e4d4fb4718d3be6318db4~mv2.png/v1/fill/w_233,h_233,al_c,q_95,enc_auto/jh2-splash2.png")
-    if gamename == "Rolling" or gamename == "rolling":
+    elif gamename == "rolling":
         embed.title = "*Rolling*"
         embed.add_field(name="About", value="Roll through obstacle courses.", inline=False)
         embed.add_field(name="Release Date", value="February 28, 2022", inline=False)
         embed.add_field(name="More Info", value="Check out more [here](https://nb-dev.wixsite.com/nbgames/rolling)\nDownload the latest version [here](https://nb064.itch.io/rolling)", inline=False)
         embed.set_thumbnail(url="https://static.wixstatic.com/media/0b14ca_f4407379470c45098b444b680e6aac5e~mv2.png/v1/fill/w_233,h_233,al_c,q_95,enc_auto/DefaultBall.png")
-    if gamename == "God Clickers" or gamename == "god clickers":
+    elif gamename == "god clickers":
         embed.title = "*God Clickers*"
         embed.add_field(name="About", value="Click Away!", inline=False)
         embed.add_field(name="Release Date", value="June 23, 2021", inline=False)
         embed.add_field(name="More Info", value="Check out more [here](https://nb-dev.wixsite.com/nbgames/god-clickers)\nDownload the latest version [here](https://nb064.itch.io/god-clickers)", inline=False)
         embed.set_thumbnail(url="https://static.wixstatic.com/media/0b14ca_06006dccd763477caa95cd181dab8b06~mv2.png/v1/fill/w_233,h_233,al_c,q_95,enc_auto/icon.png")
-    await ctx.respond(embed=embed)
+    elif gamename == "jumphouse":
+        embed.title = "*JumpHouse*"
+        embed.add_field(name="About", value="Play as a bean and move to a new house!", inline=False)
+        embed.add_field(name="Release Date", value="September 20, 2021", inline=False)
+        embed.add_field(name="More Info", value="Check out more [here](https://nb-dev.wixsite.com/nbgames/jumphouse)\nDownload the latest version [here](https://nb064.itch.io/jumphouse)", inline=False)
+        embed.set_thumbnail(url="https://static.wixstatic.com/media/0b14ca_4010b2bd06ac442f9deda2601936408c~mv2.png/v1/fill/w_233,h_233,al_c,q_95,enc_auto/icon.png")
+
+    if embed.title != None:
+        await ctx.respond(embed=embed)
+    else:
+        await ctx.respond(f'{ctx.author.mention}, I do not understand which game you are talking about. Did you make a spelling error?', delete_after=3)
 
 #Userinfo Command
 @client.slash_command(name="memberinfo", description="Get info about a member.")
