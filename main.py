@@ -145,40 +145,48 @@ async def repeat(ctx, message, channel: discord.TextChannel):
 #Play command
 @client.slash_command(name="play", description="Play music from NBGames games!")
 async def play(ctx, channel: discord.VoiceChannel, announce: bool):
-    #Check if the bot is in a voice channel.
-    inVoiceChannel = ctx.voice_client
+    if ctx.author.voice is None:
+        await ctx.respond(f"{ctx.author.mention}, you need to be connected to a voice channel to use this command.", delete_after=3)
+    else:
+        #Check if the bot is in a voice channel.
+        inVoiceChannel = ctx.voice_client
 
-    if inVoiceChannel:
-        #Disconnect from the voice channel
-        await inVoiceChannel.disconnect()
-    
-    #Connect to the voice channel
-    vc = await channel.connect()
-    await ctx.respond(f"{ctx.author.mention}, I'm connecting to play some music!")
-
-    while vc.is_connected():
-        channel = ctx.channel
-        folder = "music"
-        #Check the folder for music
-        files = [f for f in os.listdir(folder) if f.endswith('.mp3')]
-        fileToPlay = rand.choice(files)
-        fileToPlay = os.path.join(folder, fileToPlay)
-        #Play it
-        vc.play(discord.FFmpegPCMAudio(executable="C:/ffmpeg/bin/ffmpeg.exe", source=fileToPlay))
-
-        #Message the channel about which song is playing
-        if announce:
-            dir, filename = os.path.split(fileToPlay)
-            songNum, extension = os.path.splitext(filename)
-            songnames = f'{os.getcwd()}\\resources\\song_names.txt'
-            allSongs = open(songnames).readlines()
-            await channel.send(f'**Now Playing: {allSongs[int(songNum)]}**')
-
-        #This will loop the music
-        while vc.is_playing():
-            await asyncio.sleep(3)
+        if inVoiceChannel:
+            #Disconnect from the voice channel
+            await inVoiceChannel.disconnect()
         
-        continue
+        #Connect to the voice channel
+        vc = await channel.connect()
+        await ctx.respond(f"{ctx.author.mention}, I'm connecting to play some music!")
+
+        while vc.is_connected():
+            if ctx.author.voice is None:
+            #Disconnect from the voice channel
+                await ctx.voice_client.disconnect()
+                break
+            
+            channel = ctx.channel
+            folder = "music"
+            #Check the folder for music
+            files = [f for f in os.listdir(folder) if f.endswith('.mp3')]
+            fileToPlay = rand.choice(files)
+            fileToPlay = os.path.join(folder, fileToPlay)
+            #Play it
+            vc.play(discord.FFmpegPCMAudio(executable="C:/ffmpeg/bin/ffmpeg.exe", source=fileToPlay))
+
+            #Message the channel about which song is playing
+            if announce:
+                dir, filename = os.path.split(fileToPlay)
+                songNum, extension = os.path.splitext(filename)
+                songnames = f'{os.getcwd()}\\resources\\song_names.txt'
+                allSongs = open(songnames).readlines()
+                await channel.send(f'**Now Playing: {allSongs[int(songNum)]}**')
+
+            #This will loop the music
+            while vc.is_playing():
+                await asyncio.sleep(3)
+            
+            continue
 
 #Disconnect command
 @client.slash_command(name="disconnect", description="Disconnect me from the voice channel.")
