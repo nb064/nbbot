@@ -2,6 +2,9 @@ import discord, random as rand, os, asyncio, json
 from discord.ext import commands
 from os import environ
 from dotenv import load_dotenv
+from datetime import datetime
+from PIL import Image
+from io import BytesIO
 from utilities import translate
 
 intents = discord.Intents.default()
@@ -10,6 +13,7 @@ intents.members = True
 client = commands.Bot(command_prefix='.', intents=intents)
 
 sendWelcome = True
+start_time = datetime.now()
 
 load_dotenv()
 
@@ -38,9 +42,9 @@ async def help(ctx):
     embed=discord.Embed(title="NBBot Help", description="Here are all the commands for NBBot.", color=discord.Color.blue())
     embed.add_field(name="NBGames Content", value="game: Get information about a game by NBGames.\nplay: Play music from NBGames games!", inline=False)
     embed.add_field(name="Administration", value="ban: Bans a member.\nkick: Kicks a member.\nmute: Mutes a member.\nunmute: Unmutes a member\npurge: Clears an amount of messages in the channel.\nsend: I will send something!", inline=False)
-    embed.add_field(name="Fun", value="8ball: Get an answer from the 8 Ball!\ncoinflip: Flip a coin!\njoke: I'll tell you a joke!\ntranslate: Translate a message!")
+    embed.add_field(name="Fun", value="8ball: Get an answer from the 8 Ball!\ncoinflip: Flip a coin!\njerry: Become Jerry!\njoke: I'll tell you a joke!\ntranslate: Translate a message!\nzamn: ZAMN!")
     embed.add_field(name="Math", value="add: Get the sum of two numbers.\nsubtract: Get the difference of two numbers.\nmultiply: Get the product of two numbers.\ndivide: Get the quotient of two numbers.")
-    embed.add_field(name="Other", value="help: See all commands.\nmemberinfo: Gets info about a member.\nping: Get latency.\nrandom: Picks between 2 numbers.\nrepeat: I will repeat something!\nserverinfo: Get info about the server.", inline=False)
+    embed.add_field(name="Other", value="help: See all commands.\nmemberinfo: Gets info about a member.\nping: Get latency.\nrandom: Picks between 2 numbers.\nrepeat: I will repeat something!\nserverinfo: Get info about the server.\nuptime: How long has NBBot been up for?", inline=False)
     await ctx.respond(embed=embed)
 
 #Ping Command
@@ -304,6 +308,46 @@ async def userinfo(ctx):
     embed.add_field(name="Notification Setting", value=f'{ctx.guild.default_notifications}', inline=True)
     embed.add_field(name="Large", value=f'{ctx.guild.large}', inline=True)
     await ctx.respond(embed=embed)
+
+#Jerry image command
+@client.slash_command(name="jerry", description="Become Jerry!")
+async def jerry(ctx, member: discord.Member):
+    jerry = Image.open("./baseimages/jerry.png")
+
+    #Grab user profile picture and load it
+    data = BytesIO(await member.display_avatar.read())
+    pfp = Image.open(data)
+
+    #Resize pfp
+    pfp = pfp.resize((50, 50))
+
+    jerry.paste(pfp, (120, 30))
+    jerry.save("./savedimages/jerryprofile.png")
+
+    await ctx.respond(file=discord.File("./savedimages/jerryprofile.png"))
+
+#ZAMN!
+@client.slash_command(name="zamn", description="ZAMN!")
+async def zamn(ctx, member: discord.Member):
+    jerry = Image.open("./baseimages/zamn.png")
+
+    #Grab user profile picture and load it
+    data = BytesIO(await member.display_avatar.read())
+    pfp = Image.open(data)
+
+    #Resize pfp
+    pfp = pfp.resize((251, 359))
+
+    jerry.paste(pfp, (255, 72))
+    jerry.save("./savedimages/zamnprofile.png")
+
+    await ctx.respond(file=discord.File("./savedimages/zamnprofile.png"))
+
+@client.slash_command(name="uptime", description="How long has NBBot been up for?")
+async def uptime(ctx):
+    current = datetime.now()
+    elapsed = current - start_time
+    await ctx.respond(f'{ctx.author.mention}, NBBot has been up for {elapsed.days} days, {elapsed.seconds // 3600} hours, {(elapsed.seconds % 3600) // 60} minutes, and {elapsed.seconds % 60} seconds.')
 
 token = environ["TOKEN"]
 client.run(token)
