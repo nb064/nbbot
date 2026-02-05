@@ -3,28 +3,35 @@
         "title": "God Clickers",
         "about": "Click away!",
         "release_date": "June 23, 2021",
-        "more_info": "Check out more [here](https://nb-dev.wixsite.com/nbgames/god-clickers)\nDownload the latest version [here](https://nb064.itch.io/god-clickers)",
+        "more_info": "https://nb064.itch.io/god-clickers",
         "thumbnail": "https://static.wixstatic.com/media/0b14ca_06006dccd763477caa95cd181dab8b06~mv2.png/v1/fill/w_233,h_233,al_c,q_95,enc_auto/icon.png"
     },
     "jumphouse": {
         "title": "JumpHouse",
-        "about": "A 3d platformer.",
+        "about": "A 3D platformer.",
         "release_date": "September 20, 2021",
-        "more_info": "Check out more [here](https://nb-dev.wixsite.com/nbgames/jumphouse)\nDownload the latest version [here](https://nb064.itch.io/jumphouse)",
+        "more_info": "https://nb064.itch.io/jumphouse",
         "thumbnail": "https://static.wixstatic.com/media/0b14ca_4010b2bd06ac442f9deda2601936408c~mv2.png/v1/fill/w_233,h_233,al_c,q_95,enc_auto/icon.png"
     },
     "jumphouse: moving again": {
         "title": "JumpHouse: Moving Again",
         "about": "Collect boxes and move to houses!",
         "release_date": "July 28, 2023",
-        "more_info": "Check out more [here](https://nb-dev.wixsite.com/nbgames/jumphouse-moving-again)\nDownload the latest version [here](https://nb064.itch.io/jumphouse-moving-again)",
+        "more_info": "https://nb064.itch.io/jumphouse-moving-again",
         "thumbnail": "https://static.wixstatic.com/media/0b14ca_9b14f56724984396b80d7a0b381294b4~mv2.png/v1/fill/w_233,h_233,al_c,q_95,enc_auto/jh-splash1.png"
     },
     "rolling": {
         "title": "Rolling",
         "about": "Roll through obstacle courses.",
         "release_date": "February 28, 2022",
-        "more_info": "Check out more [here](https://nb-dev.wixsite.com/nbgames/rolling)\nDownload the latest version [here](https://nb064.itch.io/rolling)",
+        "more_info": "https://nb064.itch.io/rolling",
         "thumbnail": "https://static.wixstatic.com/media/0b14ca_f4407379470c45098b444b680e6aac5e~mv2.png/v1/fill/w_233,h_233,al_c,q_95,enc_auto/DefaultBall.png"
+    },
+    "rusty's adventure": {
+        "title": "Rusty's Adventure",
+        "about": "Help Rusty find his way home!",
+        "release_date": "August 21, 2025",
+        "more_info": "https://store.steampowered.com/app/3537310/Rustys_Adventure/",
+        "thumbnail": "https://img.itch.zone/aW1nLzE4MDE5NzgzLnBuZw==/315x250%23c/6%2BTFrq.png"
     }
 }
