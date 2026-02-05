@@ -2,7 +2,7 @@
 A Discord bot for the NBGames Discord server.
 ## Overview
 <p align="center">
-  <a href="https://discord.gg/SypFnDEdCc">
+  <a href="https://discord.gg/d72tjy3Q2E">
     <img alt="Discord" src="https://img.shields.io/discord/840758628461314058">
   </a>
   <a href="https://github.com/nb064/nbbot/commits/master">

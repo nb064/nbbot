@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from datetime import datetime
 from PIL import Image
 from io import BytesIO
-from utilities import translate
 
 intents = discord.Intents.default()
 intents.members = True
@@ -280,12 +279,6 @@ async def joke(ctx):
     jokes = open(f'{os.getcwd()}\\resources\\jokes.txt', encoding='utf-8').read().splitlines()
     await ctx.respond(f'{ctx.author.mention}, {rand.choice(jokes)}')
 
-#Translate command
-@client.slash_command(name="translate", description="Translate a message!")
-async def trans(ctx, message, lang_code):
-    m = translate.Translate(message, lang_code)
-    await ctx.respond(f'{ctx.author.mention}, {m}')
-
 #Memberinfo Command
 @client.slash_command(name="memberinfo", description="Get info about a member.")
 async def userinfo(ctx, member: discord.Member):
@@ -348,6 +341,12 @@ async def uptime(ctx):
     current = datetime.now()
     elapsed = current - start_time
     await ctx.respond(f'{ctx.author.mention}, NBBot has been up for {elapsed.days} days, {elapsed.seconds // 3600} hours, {(elapsed.seconds % 3600) // 60} minutes, and {elapsed.seconds % 60} seconds.')
+
+#Send a message when pinged.
+@client.event
+async def on_message(ctx):
+    if client.user.mentioned_in(ctx):
+        await ctx.channel.send(f'Hello {ctx.author.mention}, how can I assist you?')
 
 token = environ["TOKEN"]
 client.run(token)
