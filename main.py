@@ -3,8 +3,10 @@ from discord.ext import commands
 from os import environ
 from dotenv import load_dotenv
 from datetime import datetime
-from PIL import Image
+from datetime import timedelta
+from PIL import Image, ImageDraw
 from io import BytesIO
+from pathlib import Path
 import difflib
 
 intents = discord.Intents.default()
@@ -13,19 +15,32 @@ intents.members = True
 client = commands.Bot(command_prefix='.', intents=intents)
 
 sendWelcome = True
+sendDMs = True
 start_time = datetime.now()
+
+#XP Settings
+xpCooldowns = {}
+xpCooldown = 60
 
 load_dotenv()
 
 with open("resources/games.json", "r") as gamesRes:
     games = json.load(gamesRes)
 
+xpfile = Path("resources/xp.json")
+
+if xpfile.exists():
+    with xpfile.open("r") as f:
+        xp_data = json.load(f)
+else:
+    xp_data = {}
+
 #Starting up the bot
 @client.event
 async def on_ready():
     print('Logged on!')
     game = environ["GAME_ACTIVITY"]
-    await client.change_presence(status=discord.Status.idle, activity=discord.Game(name=game))
+    await client.change_presence(status=environ["ACTIVITY"], activity=discord.Game(name=game))
 
 #Welcome message
 @client.event
@@ -34,17 +49,39 @@ async def on_member_join(member):
         welcomeChannelName = environ["WELCOMECHANNEL"]
         rulesChannel = environ["RULESCHANNEL"]
         welcomeChannel = discord.utils.get(member.guild.channels, name=welcomeChannelName)
-        await welcomeChannel.send(f"Hello, {member.mention}! Welcome to {member.guild.name}. Please be sure to read <#{rulesChannel}> before you start chatting!")
+
+        #load welcome base image
+        welcomeImage = Image.open("./baseimages/welcome.png").convert("RGBA")
+
+        # Load user avatar
+        data = BytesIO(await member.display_avatar.read())
+        pfp = Image.open(data).convert("RGBA")
+        pfp = pfp.resize((145, 145))
+
+        #make circular mask
+        mask = Image.new("L", (145, 145), 0)
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((0, 0, 145, 145), fill=255)
+
+        # Apply mask
+        circle_pfp = Image.new("RGBA", (145, 145))
+        circle_pfp.paste(pfp, (0, 0), mask)
+
+        # Paste onto welcome
+        welcomeImage.paste(circle_pfp, (253, 59), circle_pfp)
+        welcomeImage.save("./savedimages/welcomeImage.png")
+
+        await welcomeChannel.send(content=f"Hello, {member.mention}! Welcome to {member.guild.name}. Please be sure to read <#{rulesChannel}> before you start chatting!", file=discord.File("./savedimages/welcomeImage.png"))
 
 #Help Command
 @client.slash_command(name = "help", description = "See all commands.")
 async def help(ctx):
-    embed=discord.Embed(title="NBBot Help", description="Here are all the commands for NBBot.", color=discord.Color.blue())
-    embed.add_field(name="NBGames Content", value="game: Get information about a game by NBGames.\nplay: Play music from NBGames games!", inline=False)
-    embed.add_field(name="Administration", value="ban: Bans a member.\nkick: Kicks a member.\nmute: Mutes a member.\nunmute: Unmutes a member\npurge: Clears an amount of messages in the channel.\nsend: I will send something!", inline=False)
-    embed.add_field(name="Fun", value="8ball: Get an answer from the 8 Ball!\ncoinflip: Flip a coin!\njerry: Become Jerry!\njoke: I'll tell you a joke!\nrate: I will rate an item!\nzamn: ZAMN!")
+    embed=discord.Embed(title="nbbot Help", description="Here are all the commands for nbbot.", color=discord.Color.blue())
+    embed.add_field(name="nbgames Content", value="bug: Report a bug directly to nbgames.\ngame: Get information about a game by nbgames.\nplay: Play music from nbgames' games!", inline=False)
+    embed.add_field(name="Administration", value="ban: Bans a member.\nkick: Kicks a member.\nmute: Mutes a member.\nunmute: Unmutes a member\npurge: Clears an amount of messages in the channel.\nsend: I will send something!\nslowmode: Set the slowmode delay of this channel.\ntimeout: Times out a member.", inline=False)
+    embed.add_field(name="Fun", value="8ball: Get an answer from the 8 Ball!\ncoinflip: Flip a coin!\njerry: Become Jerry!\njoke: I'll tell you a joke!\nlevel: Check your level stats.\nrate: I will rate an item!\ntouchgrass: Advise someone to touch grass!\nzamn: ZAMN!")
     embed.add_field(name="Math", value="add: Get the sum of two numbers.\nsubtract: Get the difference of two numbers.\nmultiply: Get the product of two numbers.\ndivide: Get the quotient of two numbers.")
-    embed.add_field(name="Other", value="help: See all commands.\nmemberinfo: Gets info about a member.\nping: Get latency.\nrandom: Picks between 2 numbers.\nrepeat: I will repeat something!\nserverinfo: Get info about the server.\nuptime: How long has NBBot been up for?", inline=False)
+    embed.add_field(name="Other", value="avatar: Grabs a member's avatar.\nhelp: See all commands.\nmemberinfo: Gets info about a member.\nping: Get latency.\nrandom: Picks between 2 numbers.\nrepeat: I will repeat something!\nserverinfo: Get info about the server.\nuptime: How long has nbbot been up for?", inline=False)
     await ctx.respond(embed=embed)
 
 #Ping Command
@@ -54,7 +91,7 @@ async def ping(ctx):
 
 #Ban Command
 @client.slash_command(name = "ban", description = "Ban a member.")
-async def ban(ctx, member: discord.Member, reason = None):
+async def ban(ctx, member: discord.Member, reason:str):
 
     #First, check if the member is higher than the bot.
     if member.top_role >= ctx.guild.me.top_role:
@@ -72,7 +109,7 @@ async def ban(ctx, member: discord.Member, reason = None):
 
 #Kick Command
 @client.slash_command(name = "kick", description = "Kick a member.")
-async def kick(ctx, member: discord.Member, reason = None):
+async def kick(ctx, member: discord.Member, reason: str):
 
     #First, check if the member is higher than the bot.
     if member.top_role >= ctx.guild.me.top_role:
@@ -90,7 +127,7 @@ async def kick(ctx, member: discord.Member, reason = None):
 
 #Mute Command
 @client.slash_command(name="mute", description = "Mute a member.")
-async def mute(ctx, member: discord.Member, reason = None):
+async def mute(ctx, member: discord.Member, reason: str):
 
     #First, check if the member is higher than the bot.
     if member.top_role >= ctx.guild.me.top_role:
@@ -99,11 +136,17 @@ async def mute(ctx, member: discord.Member, reason = None):
         return
 
     #Checks if the author has permission to mute members.
-    if ctx.author.guild_permissions.manage_roles:
+    if ctx.author.guild_permissions.moderate_members:
         #Checks the mentioned user for the ability to send messages.
         if ctx.channel.permissions_for(member).send_messages:
             await ctx.channel.set_permissions(member, send_messages=False)
             await ctx.respond(f"{ctx.author.mention}, muted {member.mention} successfully for {reason}.", delete_after=3, ephemeral=True)
+
+            if sendDMs:
+                try:
+                    await member.send(content=f"{member.mention}, you have been muted in {ctx.guild.name} for the following reason: **{reason}**")
+                except discord.Forbidden:
+                    pass
         else:
             #Sends error message if the user is already muted/can't send messages.
             await ctx.respond(f"{ctx.author.mention}, {member.mention} is already muted.", delete_after=3, ephemeral=True)
@@ -115,7 +158,7 @@ async def mute(ctx, member: discord.Member, reason = None):
 @client.slash_command(name="unmute", description = "Unmute a member.")
 async def mute(ctx, member: discord.Member):
     #Checks if the author has permission to mute members.
-    if ctx.author.guild_permissions.manage_roles:
+    if ctx.author.guild_permissions.moderate_members:
         #Checks the mentioned user for the ability to send messages.
         if not ctx.channel.permissions_for(member).send_messages:
             await ctx.channel.set_permissions(member, send_messages=True)
@@ -123,6 +166,31 @@ async def mute(ctx, member: discord.Member):
         else:
             #Sends error message if the user isn't muted/can send messages.
             await ctx.respond(f"{ctx.author.mention}, {member.mention} isn't muted.", delete_after=3, ephemeral=True)
+    else:
+        #Throws error if author doesn't have permission.
+        await ctx.respond(f"{ctx.author.mention}, you don't have permission to use this command.", delete_after=3, ephemeral=True)
+
+#Timeout command
+@client.slash_command(name="timeout", description = "Timeout a member.")
+async def timeout(ctx, member: discord.Member, minutes: int, reason: str):
+
+    #First, check if the member is higher than the bot.
+    if member.top_role >= ctx.guild.me.top_role:
+        #Throws error if bot can't timeout the specified member.
+        await ctx.respond(f"{ctx.author.mention}, I don't have the ability to timeout this member.", delete_after=3, ephemeral=True)
+        return
+    
+    #Checks if the author has permission to timeout members.
+    if ctx.author.guild_permissions.moderate_members:
+        until = discord.utils.utcnow() + timedelta(minutes=minutes)
+        await member.timeout(until, reason=reason)
+        await ctx.respond(f'{ctx.author.mention}, timed out {member.mention} for {minutes} minutes successfully for {reason}.', delete_after=3, ephemeral=True)
+
+        if sendDMs:
+            try:
+                await member.send(content=f"{member.mention}, you have been timed out in {ctx.guild.name} for {minutes} minutes for the following reason: **{reason}**")
+            except discord.Forbidden:
+                pass
     else:
         #Throws error if author doesn't have permission.
         await ctx.respond(f"{ctx.author.mention}, you don't have permission to use this command.", delete_after=3, ephemeral=True)
@@ -138,6 +206,16 @@ async def purge(ctx, number):
             await ctx.respond(f'{ctx.author.mention}, enter a valid number.', delete_after=3, ephemeral=True)
         await ctx.channel.purge(limit=number)
         await ctx.respond(f'{ctx.author.mention}, successfully cleared {str(number)} messages.', delete_after=3, ephemeral=True)
+    else:
+        #Throws error if author doesn't have permission.
+        await ctx.respond(f"{ctx.author.mention}, you don't have permission to use this command.", delete_after=3, ephemeral=True)
+
+#Slowmode command
+@client.slash_command(name="slowmode", description="Set the slowmode delay of this channel.")
+async def slowmode(ctx, seconds: int):
+    if ctx.author.guild_permissions.manage_channels:
+        await ctx.channel.edit(slowmode_delay=seconds)
+        await ctx.respond(f"{ctx.author.mention}, slowmode for this channel has been set to {seconds} seconds.", delete_after=3, ephemeral=True)
     else:
         #Throws error if author doesn't have permission.
         await ctx.respond(f"{ctx.author.mention}, you don't have permission to use this command.", delete_after=3, ephemeral=True)
@@ -160,7 +238,7 @@ async def repeat(ctx, message):
 
 #Send command
 @client.slash_command(name="send", description = "I will send something!")
-async def repeat(ctx, message, channel: discord.TextChannel):
+async def repeat(ctx, message: str, channel: discord.TextChannel):
     if ctx.author.guild_permissions.administrator:
         await channel.send(message)
         await ctx.respond(f'{ctx.author.mention}, I sent your message!', delete_after=3, ephemeral=True)
@@ -239,10 +317,7 @@ async def game(ctx, gamename):
         if close_matches:
             g = games[close_matches[0]]
         else:
-            return await ctx.respond(
-                f"{ctx.author.mention}, I do not understand which game you are talking about. Did you make a spelling error?",
-                ephemeral=True
-            )
+            return await ctx.respond(f"{ctx.author.mention}, I do not understand which game you are talking about. Did you make a spelling error?", delete_after=3, ephemeral=True)
 
     embed = discord.Embed(title=g["title"], color=discord.Color.blue())
     embed.add_field(name="About", value=g["about"], inline=False)
@@ -251,13 +326,31 @@ async def game(ctx, gamename):
     embed.set_thumbnail(url=g["thumbnail"])
     await ctx.respond(embed=embed)
 
+#Bug command
+@client.slash_command(name="bug", description="Sends a bug report directly to NBGames.")
+async def bug(ctx, gamename: str, description: str):
+    BUG_FILE = Path("resources/bugreports.json")
+
+    report = {
+        "user": f"{ctx.author.name}",
+        "user_id": ctx.author.id,
+        "gamename": gamename,
+        "bug": description,
+        "time": datetime.utcnow().isoformat()
+    }
+
+    with BUG_FILE.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(report) + "\n")
+
+    await ctx.respond(f"{ctx.author.mention}, your bug has been reported. Thank you!", delete_after=3, ephemeral=True)
+
 #Add command
 @client.slash_command(name="add", description="Get the sum of two numbers.")
 async def addition(ctx, num1, num2):
     try:
         await ctx.respond(f'{ctx.author.mention}, the sum of {num1} and {num2} is {int(num1) + int(num2)}.')
     except ValueError:
-        await ctx.respond(f'{ctx.author.mention}, please enter valid numbers.', delete_after=3)
+        await ctx.respond(f'{ctx.author.mention}, please enter valid numbers.', delete_after=3, ephemeral=True)
 
 #Subtract command
 @client.slash_command(name="subtract", description="Get the difference of two numbers.")
@@ -381,7 +474,7 @@ async def jerry(ctx, member: discord.Member):
 #ZAMN!
 @client.slash_command(name="zamn", description="ZAMN!")
 async def zamn(ctx, member: discord.Member):
-    jerry = Image.open("./baseimages/zamn.png")
+    zamn = Image.open("./baseimages/zamn.png")
 
     #Grab user profile picture and load it
     data = BytesIO(await member.display_avatar.read())
@@ -390,22 +483,87 @@ async def zamn(ctx, member: discord.Member):
     #Resize pfp
     pfp = pfp.resize((251, 359))
 
-    jerry.paste(pfp, (255, 72))
-    jerry.save("./savedimages/zamnprofile.png")
+    zamn.paste(pfp, (255, 72))
+    zamn.save("./savedimages/zamnprofile.png")
 
     await ctx.respond(file=discord.File("./savedimages/zamnprofile.png"))
 
-@client.slash_command(name="uptime", description="How long has NBBot been up for?")
+@client.slash_command(name="uptime", description="How long has nbbot been up for?")
 async def uptime(ctx):
     current = datetime.now()
     elapsed = current - start_time
-    await ctx.respond(f'{ctx.author.mention}, NBBot has been up for {elapsed.days} days, {elapsed.seconds // 3600} hours, {(elapsed.seconds % 3600) // 60} minutes, and {elapsed.seconds % 60} seconds.')
+    await ctx.respond(f'{ctx.author.mention}, nbbot has been up for {elapsed.days} days, {elapsed.seconds // 3600} hours, {(elapsed.seconds % 3600) // 60} minutes, and {elapsed.seconds % 60} seconds.')
 
-#Send a message when pinged.
+#Level command
+@client.slash_command(name="level", description="Check your level stats.")
+async def level(ctx, member: discord.Member = None):
+    member = member or ctx.author
+    guild_id = str(ctx.guild.id)
+    user_id = str(member.id)
+
+    if guild_id not in xp_data or user_id not in xp_data[guild_id]:
+        return await ctx.respond(f"{member.mention} has no XP yet.", ephemeral=True)
+
+    data = xp_data[guild_id][user_id]
+
+    #Create embed
+    embed=discord.Embed(title=f"{member.name}'s Stats", color=discord.Color.blue())
+    embed.set_thumbnail(url=member.display_avatar)
+    embed.add_field(name="Level", value=f"{data['level']}", inline=True)
+    embed.add_field(name="XP", value=f"{data['xp']} / {data['level'] * 100}", inline=True)
+    await ctx.respond(embed=embed)
+
+#Message sending logic
 @client.event
 async def on_message(ctx):
+    #Ignore bot messages
+    if ctx.author.bot:
+        return
+
+    #Ignore DMs
+    if not ctx.guild:
+        return
+    
+    #XP system
+    user_id = str(ctx.author.id)
+    guild_id = str(ctx.guild.id)
+
+    now = datetime.utcnow().timestamp()
+    last_xp = xpCooldowns.get(user_id, 0)
+
+    if now - last_xp >= xpCooldown:
+        xpCooldowns[user_id] = now
+
+        if guild_id not in xp_data:
+            xp_data[guild_id] = {}
+
+        if user_id not in xp_data[guild_id]:
+            xp_data[guild_id][user_id] = {"xp": 0, "level": 1}
+
+        gained = rand.randint(5, 15)
+        xp_data[guild_id][user_id]["xp"] += gained
+
+        #Level check
+        current_xp = xp_data[guild_id][user_id]["xp"]
+        current_level = xp_data[guild_id][user_id]["level"]
+
+        xp_needed = current_level * 100
+
+        if current_xp >= xp_needed:
+            xp_data[guild_id][user_id]["level"] += 1
+            xp_data[guild_id][user_id]["xp"] = 0
+
+            await ctx.channel.send(f"{ctx.author.mention}, you have leveled up to **Level {current_level + 1}**! 🎉")
+
+        #Save
+        with xpfile.open("w") as f:
+            json.dump(xp_data, f, indent=4)
+
+    #Send message if pinged
     if client.user.mentioned_in(ctx):
         await ctx.channel.send(f'Hello {ctx.author.mention}, how can I assist you?')
+
+    await client.process_commands(ctx)
 
 token = environ["TOKEN"]
 client.run(token)
