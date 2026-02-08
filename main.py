@@ -4,7 +4,7 @@ from os import environ
 from dotenv import load_dotenv
 from datetime import datetime
 from datetime import timedelta
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 from pathlib import Path
 import difflib
@@ -35,6 +35,7 @@ if xpfile.exists():
 else:
     xp_data = {}
 
+
 #Starting up the bot
 @client.event
 async def on_ready():
@@ -42,36 +43,44 @@ async def on_ready():
     game = environ["GAME_ACTIVITY"]
     await client.change_presence(status=environ["ACTIVITY"], activity=discord.Game(name=game))
 
+#Circular Avatar Function
+async def circular_avatar(member: discord.Member, size: int) -> Image.Image:
+    data = BytesIO(await member.display_avatar.read())
+    avatar = Image.open(data).convert("RGBA").resize((size, size))
+
+    mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, size, size), fill=255)
+
+    output = Image.new("RGBA", (size, size))
+    output.paste(avatar, (0, 0), mask)
+
+    return output
+
 #Welcome message
 @client.event
-async def on_member_join(member):
+async def on_member_join(member: discord.Member):
     if sendWelcome:
         welcomeChannelName = environ["WELCOMECHANNEL"]
         rulesChannel = environ["RULESCHANNEL"]
         welcomeChannel = discord.utils.get(member.guild.channels, name=welcomeChannelName)
 
+        if welcomeChannel is None:
+            return
+
         #load welcome base image
         welcomeImage = Image.open("./baseimages/welcome.png").convert("RGBA")
 
-        # Load user avatar
-        data = BytesIO(await member.display_avatar.read())
-        pfp = Image.open(data).convert("RGBA")
-        pfp = pfp.resize((145, 145))
+        #Get circular pfp
+        circle_pfp = await circular_avatar(member, 145)
 
-        #make circular mask
-        mask = Image.new("L", (145, 145), 0)
-        draw = ImageDraw.Draw(mask)
-        draw.ellipse((0, 0, 145, 145), fill=255)
-
-        # Apply mask
-        circle_pfp = Image.new("RGBA", (145, 145))
-        circle_pfp.paste(pfp, (0, 0), mask)
-
-        # Paste onto welcome
+        #Paste onto welcome
         welcomeImage.paste(circle_pfp, (253, 59), circle_pfp)
-        welcomeImage.save("./savedimages/welcomeImage.png")
 
-        await welcomeChannel.send(content=f"Hello, {member.mention}! Welcome to {member.guild.name}. Please be sure to read <#{rulesChannel}> before you start chatting!", file=discord.File("./savedimages/welcomeImage.png"))
+        image_bytes = BytesIO()
+        welcomeImage.save(image_bytes, format="PNG")
+        image_bytes.seek(0)
+
+        await welcomeChannel.send(content=f"Hello, {member.mention}! Welcome to {member.guild.name}. Please be sure to read <#{rulesChannel}> before you start chatting!", file=discord.File(fp=image_bytes, filename="welcome.png"))
 
 #Help Command
 @client.slash_command(name = "help", description = "See all commands.")
@@ -420,7 +429,7 @@ async def touchgrass(ctx, member: discord.Member):
 
 #Avatar command
 @client.slash_command(name="avatar", description="Grabs a member's avatar.")
-async def avatar(ctx, member: discord.Member):
+async def avatar(ctx, member: discord.Member = None):
     member = member or ctx.author
 
     embed = discord.Embed(title=f"{member.name}'s Avatar", color=discord.Color.blue())
@@ -456,10 +465,11 @@ async def userinfo(ctx):
 
 #Jerry image command
 @client.slash_command(name="jerry", description="Become Jerry!")
-async def jerry(ctx, member: discord.Member):
+async def jerry(ctx, member: discord.Member = None):
     jerry = Image.open("./baseimages/jerry.png")
 
     #Grab user profile picture and load it
+    member = member or ctx.author
     data = BytesIO(await member.display_avatar.read())
     pfp = Image.open(data)
 
@@ -467,16 +477,20 @@ async def jerry(ctx, member: discord.Member):
     pfp = pfp.resize((50, 50))
 
     jerry.paste(pfp, (120, 30))
-    jerry.save("./savedimages/jerryprofile.png")
+    
+    image_bytes = BytesIO()
+    jerry.save(image_bytes, format="PNG")
+    image_bytes.seek(0) 
 
-    await ctx.respond(file=discord.File("./savedimages/jerryprofile.png"))
+    await ctx.respond(file=discord.File(fp=image_bytes, filename="jerry.png"))
 
 #ZAMN!
 @client.slash_command(name="zamn", description="ZAMN!")
-async def zamn(ctx, member: discord.Member):
+async def zamn(ctx, member: discord.Member = None):
     zamn = Image.open("./baseimages/zamn.png")
 
     #Grab user profile picture and load it
+    member = member or ctx.author
     data = BytesIO(await member.display_avatar.read())
     pfp = Image.open(data)
 
@@ -484,9 +498,12 @@ async def zamn(ctx, member: discord.Member):
     pfp = pfp.resize((251, 359))
 
     zamn.paste(pfp, (255, 72))
-    zamn.save("./savedimages/zamnprofile.png")
+    
+    image_bytes = BytesIO()
+    zamn.save(image_bytes, format="PNG")
+    image_bytes.seek(0) 
 
-    await ctx.respond(file=discord.File("./savedimages/zamnprofile.png"))
+    await ctx.respond(file=discord.File(fp=image_bytes, filename="zamn.png"))
 
 @client.slash_command(name="uptime", description="How long has nbbot been up for?")
 async def uptime(ctx):
@@ -504,14 +521,33 @@ async def level(ctx, member: discord.Member = None):
     if guild_id not in xp_data or user_id not in xp_data[guild_id]:
         return await ctx.respond(f"{member.mention} has no XP yet.", ephemeral=True)
 
-    data = xp_data[guild_id][user_id]
+    XPdata = xp_data[guild_id][user_id]
 
-    #Create embed
-    embed=discord.Embed(title=f"{member.name}'s Stats", color=discord.Color.blue())
-    embed.set_thumbnail(url=member.display_avatar)
-    embed.add_field(name="Level", value=f"{data['level']}", inline=True)
-    embed.add_field(name="XP", value=f"{data['xp']} / {data['level'] * 100}", inline=True)
-    await ctx.respond(embed=embed)
+    #Make image
+    levelBase = Image.open("./baseimages/levelbase.png").convert("RGBA")
+
+    #Load Circular pfp
+    circle_pfp = await circular_avatar(member, 145)
+
+    #Paste onto base
+    levelBase.paste(circle_pfp, (167, 139), circle_pfp)
+
+    #Load Font
+    font_path = Path("resources") / "PowerrSemiBold.ttf"
+    font = ImageFont.truetype(str(font_path), 40)
+    draw_image = ImageDraw.Draw(levelBase)
+
+    #Draw Text Elements
+    draw_image.text((240, 87), f"{member.name}'s Stats", anchor="mm", fill="#00a651", font=font, stroke_width=3, stroke_fill="black")
+    draw_image.text((240, 331), f"Level: {XPdata['level']}", anchor="mm" , fill="#00a651", font=font, stroke_width=3, stroke_fill="black")
+    draw_image.text((240, 390), f"XP: {XPdata['xp']} / {XPdata['level'] * 100}", anchor="mm", fill="#00a651", font=font, stroke_width=3, stroke_fill="black")
+
+    #Save Image
+    image_bytes = BytesIO()
+    levelBase.save(image_bytes, format="PNG")
+    image_bytes.seek(0) 
+
+    await ctx.respond(file=discord.File(fp=image_bytes, filename="level.png"))
 
 #Message sending logic
 @client.event
